@@ -1,10 +1,4 @@
-import { ReactNode } from "react";
-
-interface PhoneMockupProps {
-  children: ReactNode;
-}
-
-const PhoneMockup = ({ children }: PhoneMockupProps) => {
+const PhoneMockup = ({ children }) => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-muted/30 to-accent/20 p-4">
       <div className="relative">

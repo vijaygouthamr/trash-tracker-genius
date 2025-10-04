@@ -9,13 +9,13 @@ import earthGlobe from "@/assets/earth-globe.png";
 
 const Hunt = () => {
   const [isRecording, setIsRecording] = useState(false);
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const [mediaStream, setMediaStream] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
   const [username, setUsername] = useState("");
-  const [leaderboard, setLeaderboard] = useState<Array<{ username: string; points: number }>>([]);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const videoRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -99,11 +99,11 @@ const Hunt = () => {
     }
   };
 
-  const uploadAndValidate = async (videoBlob: Blob) => {
+  const uploadAndValidate = async (videoBlob) => {
     try {
       toast.success("🎉 +10 points! Great job disposing that waste correctly!");
       setUserPoints(prev => prev + 10);
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Validation failed");
     }
   };
