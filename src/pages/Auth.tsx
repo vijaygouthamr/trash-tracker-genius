@@ -48,7 +48,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/20 via-accent/10 to-secondary/20 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-card rounded-3xl shadow-2xl p-8 border-4 border-primary/20">
           <div className="flex justify-center mb-6">

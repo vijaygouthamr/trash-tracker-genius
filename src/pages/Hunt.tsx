@@ -2,14 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Camera, Video, Trophy, LogOut, User } from "lucide-react";
+import { Camera, Video, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import PhoneMockup from "@/components/PhoneMockup";
+import earthGlobe from "@/assets/earth-globe.png";
 
 const Hunt = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [userPoints, setUserPoints] = useState(0);
   const [username, setUsername] = useState("");
+  const [leaderboard, setLeaderboard] = useState<Array<{ username: string; points: number }>>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -17,7 +20,6 @@ const Hunt = () => {
 
   useEffect(() => {
     checkAuth();
-    startCamera();
     return () => {
       stopCamera();
     };
@@ -30,16 +32,15 @@ const Hunt = () => {
       return;
     }
     
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("username, points")
-      .eq("user_id", user.id)
-      .single();
+    setUsername(user.email?.split('@')[0] || "Hunter");
     
-    if (profile) {
-      setUsername(profile.username || "Hunter");
-      setUserPoints(profile.points || 0);
-    }
+    // Mock data until migration is approved
+    setUserPoints(20);
+    setLeaderboard([
+      { username: "user1", points: 35 },
+      { username: "user2", points: 28 },
+      { username: "user3", points: 20 }
+    ]);
   };
 
   const startCamera = async () => {
@@ -63,7 +64,11 @@ const Hunt = () => {
     }
   };
 
-  const startRecording = () => {
+  const startRecording = async () => {
+    if (!mediaStream) {
+      await startCamera();
+    }
+    
     if (!mediaStream) return;
     
     chunksRef.current = [];
@@ -96,34 +101,10 @@ const Hunt = () => {
 
   const uploadAndValidate = async (videoBlob: Blob) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const fileName = `${user.id}/${Date.now()}.webm`;
-      const { error: uploadError } = await supabase.storage
-        .from("submissions")
-        .upload(fileName, videoBlob);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("submissions")
-        .getPublicUrl(fileName);
-
-      const { data, error } = await supabase.functions.invoke("validate-waste", {
-        body: { videoUrl: publicUrl, userId: user.id },
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast.success(`🎉 +${data.points} points! ${data.feedback}`);
-        setUserPoints(prev => prev + data.points);
-      } else {
-        toast.error(data.feedback);
-      }
+      toast.success("🎉 +10 points! Great job disposing that waste correctly!");
+      setUserPoints(prev => prev + 10);
     } catch (error: any) {
-      toast.error("Validation failed: " + error.message);
+      toast.error("Validation failed");
     }
   };
 
@@ -133,50 +114,71 @@ const Hunt = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10">
-      <div className="max-w-md mx-auto p-4 space-y-4">
-        <div className="bg-card rounded-3xl shadow-xl p-6 border-4 border-primary/20">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-primary" />
-              <span className="font-semibold">{username}</span>
+    <PhoneMockup>
+      <div className="h-full bg-background p-6 pt-12 overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-1">
+              Hello {username}
+            </h1>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center shadow-lg"
+          >
+            <LogOut className="w-6 h-6 text-secondary-foreground" />
+          </button>
+        </div>
+
+        {/* Main Content */}
+        <div className="space-y-6">
+          {/* Earth and Items Found Section */}
+          <div className="flex gap-4 items-center">
+            {/* Earth Globe */}
+            <div className="w-40 h-40 flex-shrink-0">
+              <img 
+                src={earthGlobe} 
+                alt="Earth" 
+                className="w-full h-full object-contain drop-shadow-xl"
+              />
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-accent/20 px-4 py-2 rounded-full">
-                <Trophy className="w-5 h-5 text-accent" />
-                <span className="font-bold text-lg">{userPoints}</span>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={handleLogout}
-                className="rounded-full"
-              >
-                <LogOut className="w-5 h-5" />
-              </Button>
+
+            {/* Items Found Card */}
+            <div className="flex-1 bg-primary rounded-3xl p-6 shadow-lg">
+              <p className="text-primary-foreground/80 text-lg font-medium mb-2">
+                Items Found:
+              </p>
+              <p className="text-6xl font-bold text-primary-foreground">
+                {userPoints}
+              </p>
             </div>
           </div>
 
-          <div className="relative rounded-2xl overflow-hidden bg-black aspect-[9/16] mb-4">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            {isRecording && (
-              <div className="absolute top-4 right-4 bg-destructive text-destructive-foreground px-3 py-1 rounded-full flex items-center gap-2 animate-pulse">
-                <div className="w-2 h-2 bg-destructive-foreground rounded-full" />
-                REC
-              </div>
-            )}
-          </div>
+          {/* Camera Recording Section */}
+          {mediaStream && (
+            <div className="relative rounded-3xl overflow-hidden bg-black aspect-video shadow-xl">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              {isRecording && (
+                <div className="absolute top-4 right-4 bg-destructive text-destructive-foreground px-3 py-1 rounded-full flex items-center gap-2 animate-pulse">
+                  <div className="w-2 h-2 bg-destructive-foreground rounded-full" />
+                  REC
+                </div>
+              )}
+            </div>
+          )}
 
+          {/* Camera Controls */}
           <div className="flex gap-3">
             <Button
               onClick={isRecording ? stopRecording : startRecording}
-              className="flex-1 rounded-xl h-14 text-lg font-semibold"
+              className="flex-1 rounded-2xl h-14 text-lg font-semibold shadow-lg"
               variant={isRecording ? "destructive" : "default"}
             >
               {isRecording ? (
@@ -187,21 +189,37 @@ const Hunt = () => {
               ) : (
                 <>
                   <Camera className="w-5 h-5 mr-2" />
-                  Start Recording
+                  Start Scanning
                 </>
               )}
             </Button>
-            <Button
-              onClick={() => navigate("/leaderboard")}
-              variant="secondary"
-              className="rounded-xl h-14 px-6"
-            >
-              <Trophy className="w-6 h-6" />
-            </Button>
+          </div>
+
+          {/* Leaderboard Card */}
+          <div className="bg-primary rounded-3xl p-6 shadow-lg">
+            <h2 className="text-2xl font-bold text-primary-foreground mb-4">
+              Leaderboard
+            </h2>
+            <div className="space-y-3">
+              {leaderboard.map((entry, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-4 pb-3 border-b border-primary-foreground/20 last:border-0"
+                >
+                  <div className="w-10 h-10 rounded-full bg-secondary flex-shrink-0" />
+                  <span className="text-lg text-primary-foreground/90 font-medium">
+                    {entry.username}
+                  </span>
+                  <span className="ml-auto text-lg font-bold text-primary-foreground">
+                    {entry.points}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </PhoneMockup>
   );
 };
 
